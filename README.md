@@ -1,4 +1,4 @@
-# HCM-Time-Tracking-
+# HCM-Time-Tracking- How To Run
 
 Frontend - cd client -> npm run dev
 
