@@ -8,6 +8,7 @@ node_modules/
 # Firebase credentials (NEVER commit these)
 serviceAccountKey.json
 *-service-account*.json
+server/serviceAccountKey.json
 
 # Build output
 dist/
