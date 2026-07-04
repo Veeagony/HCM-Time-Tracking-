@@ -17,6 +17,7 @@ Backend - cd server -> npm install
 Frontend - cd client -> npm run dev
 Backend - cd server -> npm run dev
 
-# Service account key (Firebase)
+# Service account key (For Backend Run)
 
+I paste the json file on the gmail
 
