@@ -19,5 +19,5 @@ Backend - cd server -> npm run dev
 
 # Service account key (For Backend Run)
 
-I paste the json file on the gmail
+Please check the email for the serviceAccountKey.json 
 
