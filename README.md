@@ -21,3 +21,7 @@ Backend - cd server -> npm run dev
 
 Please check the email for the serviceAccountKey.json 
 
+# Instructions
+
+Paste the serviceAccountKey.json on the server folder
+
