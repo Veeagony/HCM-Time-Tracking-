@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, addDoc, query, where, orderBy,
-  onSnapshot, serverTimestamp, Timestamp, limit,
+  collection, addDoc, query, where,
+  onSnapshot, Timestamp,
 } from 'firebase/firestore'
 import axios from 'axios'
 import { db } from '../firebase'
@@ -224,20 +224,36 @@ export default function Dashboard() {
   const [recentPunches, setRecentPunches] = useState([])
   const [loading, setLoading]             = useState(false)
   const [message, setMessage]             = useState('')
+  const [currentTime, setCurrentTime]     = useState(new Date())
 
   // ── Listen for today's punch ──────────────────────────────
   useEffect(() => {
     if (!currentUser) return
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+
     const q = query(
       collection(db, 'attendance'),
       where('userId', '==', currentUser.uid),
-      where('date', '>=', Timestamp.fromDate(today)),
-      orderBy('date', 'desc'),
     )
+
     return onSnapshot(q, (snap) => {
-      setTodayPunch(snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() })
+      const docs = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((item) => {
+          if (!item.date) return false
+          const date = item.date.toDate ? item.date.toDate() : new Date(item.date)
+          return date >= today
+        })
+        .sort((a, b) => {
+          const aDate = a.date.toDate ? a.date.toDate() : new Date(a.date)
+          const bDate = b.date.toDate ? b.date.toDate() : new Date(b.date)
+          return bDate - aDate
+        })
+
+      setTodayPunch(docs.length ? docs[0] : null)
+    }, (err) => {
+      setMessage(`❌ ${err.message}`)
     })
   }, [currentUser])
 
@@ -261,15 +277,30 @@ export default function Dashboard() {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     sevenDaysAgo.setHours(0, 0, 0, 0)
+
     const q = query(
       collection(db, 'attendance'),
       where('userId', '==', currentUser.uid),
-      where('date', '>=', Timestamp.fromDate(sevenDaysAgo)),
-      orderBy('date', 'desc'),
-      limit(7),
     )
+
     return onSnapshot(q, (snap) => {
-      setRecentPunches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      const punches = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((item) => {
+          if (!item.date) return false
+          const date = item.date.toDate ? item.date.toDate() : new Date(item.date)
+          return date >= sevenDaysAgo
+        })
+        .sort((a, b) => {
+          const aDate = a.date.toDate ? a.date.toDate() : new Date(a.date)
+          const bDate = b.date.toDate ? b.date.toDate() : new Date(b.date)
+          return bDate - aDate
+        })
+        .slice(0, 7)
+
+      setRecentPunches(punches)
+    }, (err) => {
+      setMessage(`❌ ${err.message}`)
     })
   }, [currentUser])
 
@@ -321,6 +352,12 @@ export default function Dashboard() {
   const isPunchedIn  = !!todayPunch?.punchIn && !todayPunch?.punchOut
   const isPunchedOut = !!todayPunch?.punchOut
 
+  useEffect(() => {
+    if (!isPunchedIn) return
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000)
+    return () => clearInterval(interval)
+  }, [isPunchedIn])
+
   const scheduledMinutes = (() => {
     const sched = userProfile?.schedule
     if (!sched) return 480
@@ -328,7 +365,10 @@ export default function Dashboard() {
     const [eh, em] = sched.end.split(':').map(Number)
     return (eh * 60 + em) - (sh * 60 + sm)
   })()
-  const workedMinutes = summary?.regular ?? durationToMinutes(todayPunch?.punchIn, todayPunch?.punchOut)
+  const workedMinutes = summary?.regular ?? (isPunchedIn
+    ? durationToMinutes(todayPunch?.punchIn, currentTime)
+    : durationToMinutes(todayPunch?.punchIn, todayPunch?.punchOut)
+  )
   const progressPct   = Math.min(100, scheduledMinutes > 0 ? Math.round((workedMinutes / scheduledMinutes) * 100) : 0)
 
   const STATS = [
